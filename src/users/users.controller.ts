@@ -1,7 +1,7 @@
 import { Controller, Inject } from '@nestjs/common';
 import { GrpcMethod } from '@nestjs/microservices';
 import { SignUpRequestDTO, LoginRequestDto, ValidateRequestDto, LogoutRequestDto } from './users.dto';
-import { USERS_SERVICE_NAME, SignUpResponse, LoginResponse, ValidateResponse, LogoutResponse, GetBalanceResponse, WALLET_SERVICE_NAME, UpdateBalanceResponse } from './users.pb';
+import { USERS_SERVICE_NAME, SignUpResponse, LoginResponse, ValidateResponse, LogoutResponse, GetBalanceResponse, WALLET_SERVICE_NAME, UpdateBalanceResponse, UpdateBalanceRequest } from './users.pb';
 import { UsersService } from './service/users.service';
 
 @Controller()
@@ -24,10 +24,10 @@ export class UsersController {
         return this.service.validate(payload);
     }
 
-    // @GrpcMethod(USERS_SERVICE_NAME, 'Logout')
-    // private logout(userId: string): Promise<LogoutResponse> {
-    // return this.service.logout(userId);
-    // }
+    @GrpcMethod(USERS_SERVICE_NAME, 'Logout')
+    private logout(payload: LogoutRequestDto): Promise<LogoutResponse> {
+    return this.service.logout(payload);
+    }
 
     @GrpcMethod(WALLET_SERVICE_NAME, 'getBalance')
     private getBalance(payload: any): Promise<GetBalanceResponse> {
@@ -35,7 +35,7 @@ export class UsersController {
     }
 
     @GrpcMethod(WALLET_SERVICE_NAME, 'updateBalance')
-    private async updateBalance(payload): Promise<UpdateBalanceResponse> {
+    private async updateBalance(payload:UpdateBalanceRequest): Promise<UpdateBalanceResponse> {
         return this.service.updateBalance(payload);
     }
 }

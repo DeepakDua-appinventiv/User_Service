@@ -1,6 +1,4 @@
 import { HttpStatus, Inject, Injectable } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
 import { JwtService } from './jwt.service';
 import {
   SignUpRequestDTO,
@@ -9,18 +7,30 @@ import {
 } from '../users.dto';
 import { User } from '../entity/users.entity';
 import { Wallet } from '../entity/wallet.entity';
-import { LoginResponse, SignUpResponse, ValidateResponse, GetBalanceResponse, UpdateBalanceResponse } from '../users.pb';
+import { LoginResponse, SignUpResponse, ValidateResponse, GetBalanceResponse, UpdateBalanceResponse, LogoutResponse } from '../users.pb';
 import { InjectModel } from '@nestjs/mongoose';
 import mongoose, { Model, Mongoose } from 'mongoose';
-import { AuthGuard } from '@nestjs/passport';
+import { Session } from '../entity/session.entity';
+import { createClient } from 'redis';
+
+const client = createClient();
+client.connect();
 
 @Injectable()
 export class UsersService {
+  // private readonly redisClient: Redis;
   constructor(
     private readonly jwtService: JwtService,
     @InjectModel(User.name) private readonly userModel: Model<User>,
     @InjectModel(Wallet.name) private readonly walletModel: Model<Wallet>,
-  ) {}
+    @InjectModel(Session.name) private readonly sessionModel: Model<Session>,
+  ) {
+    // if (!this.redisClient) {
+    //   this.redisClient = new Redis();
+    //   this.redisClient.on('error', (err) => console.log('Redis Client Error', err));
+    //   this.redisClient.connect();
+    // }
+  }
 
   public async signUp(payload: SignUpRequestDTO): Promise<SignUpResponse> {
     const existingUser = await this.userModel.findOne({ email: payload.email });
@@ -62,6 +72,16 @@ export class UsersService {
     }
 
     const token: string =await this.jwtService.generateToken(existingUser);
+
+    await client.set(`${existingUser.email}`, 'true');
+
+    const session = new this.sessionModel({
+      userId: existingUser._id,
+      activeStatus: true,
+    });
+
+    await session.save();
+
     return { token, status: HttpStatus.OK, error: null };
   }
 
@@ -81,22 +101,34 @@ export class UsersService {
     return { status: HttpStatus.OK, error: null, userId: decoded.id };
   }
 
-//   public async logout({userId: string})
+  public async logout(payload: any): Promise<LogoutResponse>{
+
+    const userId = new mongoose.Types.ObjectId(payload.userId);
+
+    await this.sessionModel.findOneAndUpdate(
+      {userId, activeStatus: true},
+      {$set: {activeStatus: false}},
+      {new: true}
+    );
+
+    return { status: HttpStatus.OK, error: null };
+  }
 
   public async getBalance(payload: any): Promise<GetBalanceResponse>{
-    console.log(payload)
+    console.log(payload);
     const uid = new mongoose.Types.ObjectId(payload.userId);
     const wallet = await this.walletModel.findOne({userId: uid}); //taking userId from token and comparing it from the userId stored in database
 
     if (!wallet) {
-      return { status: HttpStatus.NOT_FOUND, error: ['Wallet not found for the user'], balance: null };
+      return { status: HttpStatus.NOT_FOUND, error: ['Wallet not found for the user'], walletAmount: null };
   }
-    const balance = wallet.walletAmount;
-    return { status: HttpStatus.OK, error:null, balance };
+    const walletAmount = wallet.walletAmount;
+    return { status: HttpStatus.OK, error:null, walletAmount };
   }
   
   public async updateBalance(payload): Promise<UpdateBalanceResponse> {
-    const { walletAmount, serviceName } = payload;
+   
+    const { userId, walletAmount, serviceName } = payload;
 
     const updatedWallet = await this.walletModel.findOneAndUpdate(
       { userId },

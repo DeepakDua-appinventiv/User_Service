@@ -58,13 +58,13 @@ export interface GetBalanceRequest {
 export interface GetBalanceResponse {
   status: number;
   error: string[];
-  balance: number;
+  walletAmount: number;
 }
 
 /** UpdateBalance */
 export interface UpdateBalanceRequest {
   userId: string;
-  amount: number;
+  walletAmount: number;
   serviceName: string;
 }
 

@@ -9,12 +9,14 @@ import { JwtService } from './service/jwt.service';
 import { JwtStrategy } from './strategy/jwt.strategy';
 import { MongooseModule } from '@nestjs/mongoose';
 import { WalletSchema } from './entity/wallet.entity';
+import { SessionSchema } from './entity/session.entity';
 
 @Module({
   imports: [
     MongooseModule.forFeature([
       { name: 'User', schema: UserSchema },
-      { name: 'Wallet', schema: WalletSchema }
+      { name: 'Wallet', schema: WalletSchema },
+      { name: 'Session', schema: SessionSchema }
     ]),
     JwtModule.register({
       secret: 'dev',
