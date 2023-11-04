@@ -7,7 +7,7 @@ import {
 } from '../users.dto';
 import { User } from '../entity/users.entity';
 import { Wallet } from '../entity/wallet.entity';
-import { LoginResponse, SignUpResponse, ValidateResponse, GetBalanceResponse, UpdateBalanceResponse, LogoutResponse } from '../users.pb';
+import { LoginResponse, SignUpResponse, ValidateResponse, GetBalanceResponse, UpdateBalanceResponse, LogoutResponse, GetBalanceRequest, UpdateBalanceRequest, LogoutRequest } from '../users.pb';
 import { InjectModel } from '@nestjs/mongoose';
 import mongoose, { Model, Mongoose } from 'mongoose';
 import { Session } from '../entity/session.entity';
@@ -101,9 +101,9 @@ export class UsersService {
     return { status: HttpStatus.OK, error: null, userId: decoded.id };
   }
 
-  public async logout(payload: any): Promise<LogoutResponse>{
+  public async logout(payload: LogoutRequest): Promise<LogoutResponse>{
 
-    const userId = new mongoose.Types.ObjectId(payload.userId);
+    const userId = new mongoose.Types.ObjectId(payload.token);
 
     await this.sessionModel.findOneAndUpdate(
       {userId, activeStatus: true},
@@ -114,7 +114,7 @@ export class UsersService {
     return { status: HttpStatus.OK, error: null };
   }
 
-  public async getBalance(payload: any): Promise<GetBalanceResponse>{
+  public async getBalance(payload: GetBalanceRequest): Promise<GetBalanceResponse>{
     console.log(payload);
     const uid = new mongoose.Types.ObjectId(payload.userId);
     const wallet = await this.walletModel.findOne({userId: uid}); //taking userId from token and comparing it from the userId stored in database
@@ -126,9 +126,11 @@ export class UsersService {
     return { status: HttpStatus.OK, error:null, walletAmount };
   }
   
-  public async updateBalance(payload): Promise<UpdateBalanceResponse> {
-   
+  public async updateBalance(payload: UpdateBalanceRequest): Promise<UpdateBalanceResponse> {
+    console.log(payload);
     const { userId, walletAmount, serviceName } = payload;
+    // const uid = new mongoose.Types.ObjectId(userId);
+    console.log(userId);
 
     const updatedWallet = await this.walletModel.findOneAndUpdate(
       { userId },
