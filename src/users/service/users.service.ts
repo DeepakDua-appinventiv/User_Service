@@ -101,9 +101,9 @@ export class UsersService {
     return { status: HttpStatus.OK, error: null, userId: decoded.id };
   }
 
-  public async logout(payload: LogoutRequest): Promise<LogoutResponse>{
+  public async logout(payload: string): Promise<LogoutResponse>{
 
-    const userId = new mongoose.Types.ObjectId(payload.token);
+    const userId = new mongoose.Types.ObjectId(payload);
 
     await this.sessionModel.findOneAndUpdate(
       {userId, activeStatus: true},
@@ -129,14 +129,16 @@ export class UsersService {
   public async updateBalance(payload: UpdateBalanceRequest): Promise<UpdateBalanceResponse> {
     console.log(payload);
     const { userId, walletAmount, serviceName } = payload;
-    // const uid = new mongoose.Types.ObjectId(userId);
-    console.log(userId);
-
+    const uid = new mongoose.Types.ObjectId(userId);
+    console.log(uid);
+    const wallet = await this.walletModel.findOne({userId: uid});
+    console.log(wallet);
+    const newamount = wallet.walletAmount+walletAmount
     const updatedWallet = await this.walletModel.findOneAndUpdate(
-      { userId },
+      { userId: wallet.userId },
       {
-          $inc: { walletAmount: walletAmount },
-          $set: { serviceName }
+          // $inc: { walletAmount },
+          $set: { walletAmount:newamount, serviceName }
       },
       { new: true } 
   );
@@ -144,6 +146,8 @@ export class UsersService {
     if (!updatedWallet) {
       return { status: HttpStatus.NOT_FOUND, error: ['Wallet not found for the user'] };
   }
+
+  return { status: HttpStatus.OK, error:null};
 
   }
 }

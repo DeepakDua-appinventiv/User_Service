@@ -25,8 +25,8 @@ export class UsersController {
     }
 
     @GrpcMethod(USERS_SERVICE_NAME, 'Logout')
-    private logout(payload: LogoutRequestDto): Promise<LogoutResponse> {
-    return this.service.logout(payload);
+    private logout(payload: any): Promise<LogoutResponse> {
+    return this.service.logout(payload.userId);
     }
 
     @GrpcMethod(WALLET_SERVICE_NAME, 'getBalance')
