@@ -128,7 +128,7 @@ export class UsersService {
   
   public async updateBalance(payload: UpdateBalanceRequest): Promise<UpdateBalanceResponse> {
     console.log(payload);
-    const { userId, walletAmount, serviceName } = payload;
+    const { userId, walletAmount, serviceName } = payload;  //todo remove serviceName from here and also from proto
     const uid = new mongoose.Types.ObjectId(userId);
     console.log(uid);
     const wallet = await this.walletModel.findOne({userId: uid});
