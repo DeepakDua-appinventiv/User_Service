@@ -5,7 +5,6 @@ import { User, UserSchema } from './entity/users.entity';
 import { UsersService } from './service/users.service';
 // import { JwtService } from '@nestjs/jwt';
 import { JwtService } from './service/jwt.service';
-
 import { JwtStrategy } from './strategy/jwt.strategy';
 import { MongooseModule } from '@nestjs/mongoose';
 import { WalletSchema } from './entity/wallet.entity';
