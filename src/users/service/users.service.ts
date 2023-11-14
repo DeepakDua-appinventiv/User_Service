@@ -52,7 +52,6 @@ export class UsersService {
     const newWalletEntry = new this.walletModel({
       userId: newUser._id,
       walletAmount: 0,
-      serviceName: null,
     });
 
     await newWalletEntry.save();
@@ -128,17 +127,14 @@ export class UsersService {
   
   public async updateBalance(payload: UpdateBalanceRequest): Promise<UpdateBalanceResponse> {
     console.log(payload);
-    const { userId, walletAmount, serviceName } = payload;  //todo remove serviceName from here and also from proto
+    const { userId, walletAmount } = payload;  
     const uid = new mongoose.Types.ObjectId(userId);
-    console.log(uid);
     const wallet = await this.walletModel.findOne({userId: uid});
-    console.log(wallet);
-    const newamount = wallet.walletAmount+walletAmount
+    const updatedAmount = wallet.walletAmount+walletAmount
     const updatedWallet = await this.walletModel.findOneAndUpdate(
       { userId: wallet.userId },
       {
-          // $inc: { walletAmount },
-          $set: { walletAmount:newamount, serviceName }
+          $set: { walletAmount:updatedAmount }
       },
       { new: true } 
   );

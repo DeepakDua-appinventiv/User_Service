@@ -10,8 +10,6 @@ export class Wallet extends Document {
   @Prop()
   walletAmount: number;
 
-  @Prop()
-  serviceName: string;
 }
 
 export const WalletSchema = SchemaFactory.createForClass(Wallet);
