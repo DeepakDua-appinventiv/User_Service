@@ -18,18 +18,12 @@ client.connect();
 
 @Injectable()
 export class UsersService {
-  // private readonly redisClient: Redis;
   constructor(
     private readonly jwtService: JwtService,
     @InjectModel(User.name) private readonly userModel: Model<User>,
     @InjectModel(Wallet.name) private readonly walletModel: Model<Wallet>,
     @InjectModel(Session.name) private readonly sessionModel: Model<Session>,
   ) {
-    // if (!this.redisClient) {
-    //   this.redisClient = new Redis();
-    //   this.redisClient.on('error', (err) => console.log('Redis Client Error', err));
-    //   this.redisClient.connect();
-    // }
   }
 
   public async signUp(payload: SignUpRequestDTO): Promise<SignUpResponse> {
@@ -130,20 +124,32 @@ export class UsersService {
     const { userId, walletAmount } = payload;  
     const uid = new mongoose.Types.ObjectId(userId);
     const wallet = await this.walletModel.findOne({userId: uid});
-    const updatedAmount = wallet.walletAmount+walletAmount
-    const updatedWallet = await this.walletModel.findOneAndUpdate(
+    if (!wallet) {
+      return { status: HttpStatus.NOT_FOUND, error: ['Wallet not found for the user'] };
+    }
+    let currentBalance = wallet.walletAmount;
+
+    if(walletAmount >= 0){
+      const updatedAmount = currentBalance + walletAmount;
+      await this.walletModel.findOneAndUpdate(
+        { userId: uid },
+        { $set: { walletAmount: updatedAmount } },
+        { new: true }
+      );
+    }else{
+      const absWalletAmount = Math.abs(walletAmount);
+      if (currentBalance < absWalletAmount) {
+        return { status: HttpStatus.BAD_REQUEST, error: ['Insufficient funds'] };
+    }
+    const updatedAmount = currentBalance - absWalletAmount;
+    await this.walletModel.findOneAndUpdate(
       { userId: wallet.userId },
       {
           $set: { walletAmount:updatedAmount }
       },
       { new: true } 
   );
-
-    if (!updatedWallet) {
-      return { status: HttpStatus.NOT_FOUND, error: ['Wallet not found for the user'] };
-  }
-
+}
   return { status: HttpStatus.OK, error:null};
-
   }
 }
