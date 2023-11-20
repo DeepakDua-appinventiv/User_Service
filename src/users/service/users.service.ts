@@ -129,27 +129,12 @@ export class UsersService {
     }
     let currentBalance = wallet.walletAmount;
 
-    if(walletAmount >= 0){
       const updatedAmount = currentBalance + walletAmount;
       await this.walletModel.findOneAndUpdate(
         { userId: uid },
         { $set: { walletAmount: updatedAmount } },
         { new: true }
       );
-    }else{
-      const absWalletAmount = Math.abs(walletAmount);
-      if (currentBalance < absWalletAmount) {
-        return { status: HttpStatus.BAD_REQUEST, error: ['Insufficient funds'] };
-    }
-    const updatedAmount = currentBalance - absWalletAmount;
-    await this.walletModel.findOneAndUpdate(
-      { userId: wallet.userId },
-      {
-          $set: { walletAmount:updatedAmount }
-      },
-      { new: true } 
-  );
-}
-  return { status: HttpStatus.OK, error:null};
+      return { status: HttpStatus.OK, error:null};
   }
 }
