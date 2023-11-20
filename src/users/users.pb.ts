@@ -40,6 +40,40 @@ export interface ValidateResponse {
   userId: string;
 }
 
+export interface forgetPasswordRequest {
+  email: string;
+}
+
+export interface forgetPasswordResponse {
+  status: number;
+  error: string[];
+  response: string;
+}
+
+export interface resetPasswordRequest {
+  email: string;
+  OTP: number;
+  password: string;
+}
+
+export interface resetPasswordResponse {
+  status: number;
+  error: string[];
+  response: string;
+}
+
+export interface changePasswordRequest {
+  userId: string;
+  oldPassword: string;
+  newPassword: string;
+}
+
+export interface changePasswordResponse {
+  status: number;
+  error: string[];
+  response: string;
+}
+
 /** Logout */
 export interface LogoutRequest {
   token: string;
@@ -81,6 +115,12 @@ export interface UsersServiceClient {
 
   validate(request: ValidateRequest): Observable<ValidateResponse>;
 
+  forgetPassword(request: forgetPasswordRequest): Observable<forgetPasswordResponse>;
+
+  resetPassword(request: resetPasswordRequest): Observable<resetPasswordResponse>;
+
+  changePassword(request: changePasswordRequest): Observable<changePasswordResponse>;
+
   logout(request: LogoutRequest): Observable<LogoutResponse>;
 }
 
@@ -91,12 +131,32 @@ export interface UsersServiceController {
 
   validate(request: ValidateRequest): Promise<ValidateResponse> | Observable<ValidateResponse> | ValidateResponse;
 
+  forgetPassword(
+    request: forgetPasswordRequest,
+  ): Promise<forgetPasswordResponse> | Observable<forgetPasswordResponse> | forgetPasswordResponse;
+
+  resetPassword(
+    request: resetPasswordRequest,
+  ): Promise<resetPasswordResponse> | Observable<resetPasswordResponse> | resetPasswordResponse;
+
+  changePassword(
+    request: changePasswordRequest,
+  ): Promise<changePasswordResponse> | Observable<changePasswordResponse> | changePasswordResponse;
+
   logout(request: LogoutRequest): Promise<LogoutResponse> | Observable<LogoutResponse> | LogoutResponse;
 }
 
 export function UsersServiceControllerMethods() {
   return function (constructor: Function) {
-    const grpcMethods: string[] = ["signUp", "login", "validate", "logout"];
+    const grpcMethods: string[] = [
+      "signUp",
+      "login",
+      "validate",
+      "forgetPassword",
+      "resetPassword",
+      "changePassword",
+      "logout",
+    ];
     for (const method of grpcMethods) {
       const descriptor: any = Reflect.getOwnPropertyDescriptor(constructor.prototype, method);
       GrpcMethod("UsersService", method)(constructor.prototype[method], method, descriptor);

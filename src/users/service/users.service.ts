@@ -1,4 +1,4 @@
-import { HttpStatus, Inject, Injectable } from '@nestjs/common';
+import { HttpStatus, Inject, Injectable, InternalServerErrorException } from '@nestjs/common';
 import { JwtService } from './jwt.service';
 import {
   SignUpRequestDTO,
@@ -7,11 +7,14 @@ import {
 } from '../users.dto';
 import { User } from '../entity/users.entity';
 import { Wallet } from '../entity/wallet.entity';
-import { LoginResponse, SignUpResponse, ValidateResponse, GetBalanceResponse, UpdateBalanceResponse, LogoutResponse, GetBalanceRequest, UpdateBalanceRequest, LogoutRequest } from '../users.pb';
+import { LoginResponse, SignUpResponse, ValidateResponse, GetBalanceResponse, UpdateBalanceResponse, LogoutResponse, GetBalanceRequest, UpdateBalanceRequest, LogoutRequest, forgetPasswordRequest, forgetPasswordResponse, resetPasswordRequest, resetPasswordResponse, changePasswordRequest, changePasswordResponse } from '../users.pb';
 import { InjectModel } from '@nestjs/mongoose';
 import mongoose, { Model, Mongoose } from 'mongoose';
 import { Session } from '../entity/session.entity';
+import * as nodemailer from 'nodemailer';
+import bcrypt from 'bcrypt';
 import { createClient } from 'redis';
+import { RedisService } from 'src/providers/redis.service';
 
 const client = createClient();
 client.connect();
@@ -23,6 +26,7 @@ export class UsersService {
     @InjectModel(User.name) private readonly userModel: Model<User>,
     @InjectModel(Wallet.name) private readonly walletModel: Model<Wallet>,
     @InjectModel(Session.name) private readonly sessionModel: Model<Session>,
+    private readonly redisService: RedisService
   ) {
   }
 
@@ -92,6 +96,69 @@ export class UsersService {
     }
 
     return { status: HttpStatus.OK, error: null, userId: decoded.id };
+  }
+
+  public async forgetPassword(payload: forgetPasswordRequest): Promise<forgetPasswordResponse> {
+    const data:User = await this.userModel.findOne({email:payload.email})
+    if(!data)
+    return {status:400, response: 'Email not found', error:null};
+    const OTP = Math.floor(1000 + Math.random() * 9000);
+    await this.redisService.redisSet(payload.email,OTP.toString(),120)
+    const transporter = nodemailer.createTransport({
+      service: 'gmail',
+      auth: {
+        user: 'deepudua710@gmail.com',
+        pass: 'nzcimpkmswmscvgl',
+      },
+    });
+    const mailOptions = {
+      from: 'deepudua710@gmail.com',
+      to: payload.email,
+      subject: 'Password Reset Request',
+      text: `Your OTP for password reset is: ${OTP}`
+    };
+    transporter.sendMail(mailOptions, (error, info) => {
+      if (error)
+        throw new InternalServerErrorException('Error sending email');
+      else
+        console.log('Email sent: ' + info.response);
+    })
+    return {status: 200, error: null, response: 'Email sent successfully' }
+
+  }
+
+  public async resetPassword(payload:resetPasswordRequest):Promise<resetPasswordResponse> {
+    let redisOTP = await this.redisService.redisGet(payload.email)
+    if (+redisOTP == payload.OTP ) {
+      const hashedPassword = await this.jwtService.encodePassword(payload.password);
+      const user = await this.userModel.findOne({ email:payload.email });
+      if (user) {
+        await this.redisService.redisDel(payload.email);
+        user.password = hashedPassword;
+        await user.save();
+        return { status: HttpStatus.OK, response: 'Password reset successfully', error:null}
+      }
+    } else {
+      return { status: HttpStatus.BAD_REQUEST, response: 'Password reset failure', error: null}
+    }
+  }
+
+
+  public async changePassword(payload: changePasswordRequest): Promise<changePasswordResponse> {
+    const user = await this.userModel.findById(payload.userId);
+    if (!user) {
+      return { status: HttpStatus.NOT_FOUND, response:'User does not exist', error:null }
+    }
+    const isOldPassword = await this.jwtService.isPasswordValid(payload.oldPassword, user.password)
+    if (!isOldPassword) {
+      return { status: HttpStatus.BAD_REQUEST, response:'Wrong Password', error:null }
+    }
+    if(user.password === payload.newPassword)
+    return { status: HttpStatus.BAD_REQUEST, response:'Please enter another password' , error:null };
+
+    user.password = await this.jwtService.encodePassword(payload.newPassword);
+    await user.save();
+    return { status: HttpStatus.OK, response:'Password Changed Successfully' , error:null };
   }
 
   public async logout(payload: string): Promise<LogoutResponse>{

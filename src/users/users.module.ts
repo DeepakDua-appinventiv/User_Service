@@ -9,9 +9,11 @@ import { JwtStrategy } from './strategy/jwt.strategy';
 import { MongooseModule } from '@nestjs/mongoose';
 import { WalletSchema } from './entity/wallet.entity';
 import { SessionSchema } from './entity/session.entity';
+import { RedisModule } from 'src/providers/redis.module';
 
 @Module({
   imports: [
+    RedisModule,
     MongooseModule.forFeature([
       { name: 'User', schema: UserSchema },
       { name: 'Wallet', schema: WalletSchema },
