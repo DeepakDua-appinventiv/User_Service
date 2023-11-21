@@ -15,6 +15,7 @@ import * as nodemailer from 'nodemailer';
 import bcrypt from 'bcrypt';
 import { createClient } from 'redis';
 import { RedisService } from 'src/providers/redis.service';
+import { RESPONSE_MESSAGES } from 'src/common/users.constants';
 
 const client = createClient();
 client.connect();
@@ -34,7 +35,7 @@ export class UsersService {
     const existingUser = await this.userModel.findOne({ email: payload.email });
 
     if (existingUser) {
-      return { status: HttpStatus.CONFLICT, error: ['E-Mail already exists'] };
+      return { status: HttpStatus.CONFLICT, error: [RESPONSE_MESSAGES.ALREADY_EXIST] };
     }
 
     const newUser = new this.userModel({
@@ -60,12 +61,12 @@ export class UsersService {
   public async login({ email, password }: LoginRequestDto): Promise<LoginResponse> {
     const existingUser = await this.userModel.findOne({ email: email });
     if(!existingUser){
-        return { status: HttpStatus.NOT_FOUND, error: ['E-Mail not found'], token: null };
+        return { status: HttpStatus.NOT_FOUND, error: [RESPONSE_MESSAGES.NOT_EXIST], token: null };
     } 
     const isPasswordValid: boolean = await this.jwtService.isPasswordValid(password, existingUser.password);
 
     if(!isPasswordValid){
-        return { status: HttpStatus.NOT_FOUND, error: ['Wrong Password'], token: null }
+        return { status: HttpStatus.NOT_FOUND, error: [RESPONSE_MESSAGES.INVALID_CREDENTIALS], token: null }
     }
 
     const token: string =await this.jwtService.generateToken(existingUser);
@@ -86,13 +87,13 @@ export class UsersService {
     const decoded: User = await this.jwtService.verify(token);
 
     if(!decoded){
-        return { status: HttpStatus.FORBIDDEN, error: ['token is invalid'], userId: null }
+        return { status: HttpStatus.FORBIDDEN, error: [RESPONSE_MESSAGES.INVALID_TOKEN], userId: null }
     }
 
     const user: User = await this.jwtService.validateUser(decoded);
 
     if(!user) {
-        return { status: HttpStatus.CONFLICT, error: ['User not found'], userId: null };
+        return { status: HttpStatus.CONFLICT, error: [RESPONSE_MESSAGES.USER_NOT_FOUND], userId: null };
     }
 
     return { status: HttpStatus.OK, error: null, userId: decoded.id };
@@ -101,7 +102,7 @@ export class UsersService {
   public async forgetPassword(payload: forgetPasswordRequest): Promise<forgetPasswordResponse> {
     const data:User = await this.userModel.findOne({email:payload.email})
     if(!data)
-    return {status:400, response: 'Email not found', error:null};
+    return {status:400, response: RESPONSE_MESSAGES.USER_NOT_FOUND, error:null};
     const OTP = Math.floor(1000 + Math.random() * 9000);
     await this.redisService.redisSet(payload.email,OTP.toString(),120)
     const transporter = nodemailer.createTransport({
@@ -119,11 +120,11 @@ export class UsersService {
     };
     transporter.sendMail(mailOptions, (error, info) => {
       if (error)
-        throw new InternalServerErrorException('Error sending email');
+        throw new InternalServerErrorException(RESPONSE_MESSAGES.EMAIL_ERROR);
       else
         console.log('Email sent: ' + info.response);
     })
-    return {status: 200, error: null, response: 'Email sent successfully' }
+    return {status: 200, error: null, response: RESPONSE_MESSAGES.EMAIL_SUCCESS }
 
   }
 
@@ -136,10 +137,10 @@ export class UsersService {
         await this.redisService.redisDel(payload.email);
         user.password = hashedPassword;
         await user.save();
-        return { status: HttpStatus.OK, response: 'Password reset successfully', error:null}
+        return { status: HttpStatus.OK, response: RESPONSE_MESSAGES.PASSWORD_RESET_SUCCESS, error:null}
       }
     } else {
-      return { status: HttpStatus.BAD_REQUEST, response: 'Password reset failure', error: null}
+      return { status: HttpStatus.BAD_REQUEST, response: RESPONSE_MESSAGES.PASSWORD_RESET_FAILURE, error: null}
     }
   }
 
@@ -147,18 +148,18 @@ export class UsersService {
   public async changePassword(payload: changePasswordRequest): Promise<changePasswordResponse> {
     const user = await this.userModel.findById(payload.userId);
     if (!user) {
-      return { status: HttpStatus.NOT_FOUND, response:'User does not exist', error:null }
+      return { status: HttpStatus.NOT_FOUND, response:RESPONSE_MESSAGES.NOT_EXIST, error:null }
     }
     const isOldPassword = await this.jwtService.isPasswordValid(payload.oldPassword, user.password)
     if (!isOldPassword) {
-      return { status: HttpStatus.BAD_REQUEST, response:'Wrong Password', error:null }
+      return { status: HttpStatus.BAD_REQUEST, response:RESPONSE_MESSAGES.INVALID_CREDENTIALS, error:null }
     }
     if(user.password === payload.newPassword)
     return { status: HttpStatus.BAD_REQUEST, response:'Please enter another password' , error:null };
 
     user.password = await this.jwtService.encodePassword(payload.newPassword);
     await user.save();
-    return { status: HttpStatus.OK, response:'Password Changed Successfully' , error:null };
+    return { status: HttpStatus.OK, response:RESPONSE_MESSAGES.PASSWORD_CHANGE_SUCCESS , error:null };
   }
 
   public async logout(payload: string): Promise<LogoutResponse>{
@@ -180,7 +181,7 @@ export class UsersService {
     const wallet = await this.walletModel.findOne({userId: uid}); //taking userId from token and comparing it from the userId stored in database
 
     if (!wallet) {
-      return { status: HttpStatus.NOT_FOUND, error: ['Wallet not found for the user'], walletAmount: null };
+      return { status: HttpStatus.NOT_FOUND, error: [RESPONSE_MESSAGES.WALLET_NOT_FOUND], walletAmount: null };
   }
     const walletAmount = wallet.walletAmount;
     return { status: HttpStatus.OK, error:null, walletAmount };
@@ -192,7 +193,7 @@ export class UsersService {
     const uid = new mongoose.Types.ObjectId(userId);
     const wallet = await this.walletModel.findOne({userId: uid});
     if (!wallet) {
-      return { status: HttpStatus.NOT_FOUND, error: ['Wallet not found for the user'] };
+      return { status: HttpStatus.NOT_FOUND, error: [RESPONSE_MESSAGES.WALLET_NOT_FOUND] };
     }
     let currentBalance = wallet.walletAmount;
 
