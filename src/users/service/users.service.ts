@@ -16,6 +16,7 @@ import bcrypt from 'bcrypt';
 import { createClient } from 'redis';
 import { RedisService } from 'src/providers/redis.service';
 import { RESPONSE_MESSAGES } from 'src/common/users.constants';
+import config from 'src/common/config.common';
 
 const client = createClient();
 client.connect();
@@ -71,7 +72,7 @@ export class UsersService {
 
     const token: string =await this.jwtService.generateToken(existingUser);
 
-    await client.set(`${existingUser.email}`, 'true');
+    await this.redisService.redisSet(`${existingUser._id}`, 'true', 3600);
 
     const session = new this.sessionModel({
       userId: existingUser._id,
@@ -108,12 +109,12 @@ export class UsersService {
     const transporter = nodemailer.createTransport({
       service: 'gmail',
       auth: {
-        user: 'deepudua710@gmail.com',
-        pass: 'nzcimpkmswmscvgl',
+        user: config.EMAIL,
+        pass: config.EMAIL_PASSWORD,
       },
     });
     const mailOptions = {
-      from: 'deepudua710@gmail.com',
+      from: config.EMAIL,
       to: payload.email,
       subject: 'Password Reset Request',
       text: `Your OTP for password reset is: ${OTP}`
@@ -165,6 +166,8 @@ export class UsersService {
   public async logout(payload: string): Promise<LogoutResponse>{
 
     const userId = new mongoose.Types.ObjectId(payload);
+
+    await this.redisService.redisSet(`${userId}`, 'false', 7200)
 
     await this.sessionModel.findOneAndUpdate(
       {userId, activeStatus: true},
